@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Web con n8n y AWS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 mt-5">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title text-center">Calculadora Matemática</h3>
+                        <p class="text-center text-muted">Introduce una expresión (ej. 2 * (3 + 5) / 4)</p>
+                        
+                        <form id="calcForm">
+                            <div class="mb-3">
+                                <label for="expression" class="form-label">Expresión:</label>
+                                <input type="text" class="form-control" id="expression" required>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary" id="submitButton">
+                                    Calcular y Guardar Log
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="loadingSpinner" class="text-center mt-3 d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+
+                        <div id="resultArea" class="alert mt-4 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        // Pega la IP pública de tu EC2 Windows Server
+        const API_ENDPOINT = "http://34.236.223.58:5000/calculate"; 
+
+        // --- LÓGICA DE LA APP ---
+        const form = document.getElementById('calcForm');
+        const expressionInput = document.getElementById('expression');
+        const resultArea = document.getElementById('resultArea');
+        const spinner = document.getElementById('loadingSpinner');
+        const submitButton = document.getElementById('submitButton');
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            // Mostrar spinner y deshabilitar botón
+            spinner.classList.remove('d-none');
+            resultArea.classList.add('d-none');
+            submitButton.disabled = true;
+
+            const operation = expressionInput.value;
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ operation: operation })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Error del servidor (ej. "2 + a")
+                    showResult(`Error: ${data.error || 'Fallo en el cálculo'}`, 'alert-danger');
+                } else {
+                    // Éxito
+                    showResult(`Resultado: ${data.result}`, 'alert-success');
+                }
+
+            } catch (error) {
+                // Error de red (ej. API caída o CORS)
+                console.error("Error de conexión:", error);
+                showResult("Error de conexión con el servidor API.", 'alert-danger');
+            } finally {
+                // Ocultar spinner y habilitar botón
+                spinner.classList.add('d-none');
+                submitButton.disabled = false;
+            }
+        });
+
+        function showResult(message, alertClass) {
+            resultArea.textContent = message;
+            resultArea.className = `alert ${alertClass} mt-4`; // Reset clases
+            resultArea.classList.remove('d-none');
+        }
+    </script>
+</body>
+</html>
